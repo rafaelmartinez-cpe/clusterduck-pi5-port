@@ -1,0 +1,167 @@
+#include <cstdarg>
+#include <cstdio>
+
+#ifndef DUCKLOGGER_H
+#define DUCKLOGGER_H
+
+
+#ifdef CDP_DEBUG
+#define CDP_LOG_ERROR
+#define CDP_LOG_INFO
+#define CDP_LOG_DEBUG
+#define CDP_LOG_WARN
+#endif
+
+#ifdef CDP_INFO
+#define CDP_LOG_ERROR
+#define CDP_LOG_INFO
+#define CDP_LOG_WARN
+#endif
+
+#ifdef CDP_WARN
+#define CDP_LOG_ERROR
+#define CDP_LOG_WARN
+#endif
+
+#ifdef CDP_ERROR
+#define CDP_LOG_ERROR
+#endif
+
+#ifndef __FILENAME__
+//#define __FILENAME__                                                           \
+  (strrchr(__FILE__, '/') ? strrchr(__FILE__, '/') + 1 : __FILE__)
+#define __FILENAME__ "FILENAME"
+  #endif
+
+#include "../include/cdpcfg.h"
+
+#if defined(ARDUINO)
+#include "Arduino.h"
+#define OUTPUT_PORT Serial
+#else
+#include "../ArduinoReplacement.h"
+#define PORT std::cout
+#endif
+
+// https://github.com/esp8266/Arduino/blob/65579d29081cb8501e4d7f786747bf12e7b37da2/cores/esp8266/Print.cpp#L50
+static size_t cdpPrintf(const char *format, ...) {
+  #ifndef LINUX
+    va_list arg;
+    va_start(arg, format);
+    char temp[64];
+    char* buffer = temp;
+    size_t len = vsnprintf(temp, sizeof(temp), format, arg);
+    va_end(arg);
+    if (len > sizeof(temp) - 1) {
+        buffer = new (std::nothrow) char[len + 1];
+        if (!buffer) {
+            return 0;
+        }
+        va_start(arg, format);
+        vsnprintf(buffer, len + 1, format, arg);
+        va_end(arg);
+    }
+    // len = OUTPUT_PORT.write((const uint8_t*) buffer, len);
+    if (buffer != temp) {
+        delete[] buffer;
+    }
+    return len;
+    #endif
+    #ifdef LINUX
+
+      va_list args;
+      va_start(args, format);
+
+      // print to console (stdout). Use stderr if you prefer.
+      int rc = vfprintf(stdout, format, args);
+      va_end(args);
+
+      if (rc < 0) return 0;
+      fflush(stdout);  // optional: force immediate output
+      return static_cast<size_t>(rc);
+    #endif
+}
+
+#ifdef CDP_LOG_ERROR
+#define logerr(format, ...)                                     \
+  do {                                                          \
+    cdpPrintf("[E]");                                           \
+    cdpPrintf("[** %s : %d] ",__FILENAME__, __LINE__);          \
+    cdpPrintf(format, ##__VA_ARGS__);                           \
+  } while (0)
+
+#define logerr_ln(format, ...)                                  \
+  do {                                                          \
+    cdpPrintf("[E]");                                           \
+    cdpPrintf("[** %s : %d] ",__FILENAME__, __LINE__);          \
+    cdpPrintf(format, ##__VA_ARGS__);cdpPrintf("\n");           \
+  } while (0)
+#else
+#define logerr(format, ...)                                     \
+  {}
+#define logerr_ln(format, ...)                                  \
+  {}
+#endif // CDP_LOG_ERROR
+
+
+#ifdef CDP_LOG_WARN
+#define logwarn(format, ...)                                    \
+  do {                                                          \
+    cdpPrintf("[W]");                                           \
+    cdpPrintf("[%s : %d] ",__FILENAME__, __LINE__);              \
+    cdpPrintf(format, ##__VA_ARGS__);                           \
+  } while (0)
+
+#define logwarn_ln(format, ...)                                 \
+  do {                                                          \
+    cdpPrintf("[W]");                                           \
+    cdpPrintf("[%s : %d] ",__FILENAME__, __LINE__);              \
+    cdpPrintf(format, ##__VA_ARGS__);cdpPrintf("\n");           \
+  } while (0)
+#else
+#define logwarn(format, ...)                                    \
+  {}
+#define logwarn_ln(format, ...)                                 \
+  {}
+#endif // CDP_LOG_WARN
+
+#if defined(CDP_LOG_INFO)
+#define loginfo(format, ...)                                    \
+  do {                                                          \
+    cdpPrintf("[I]");                                           \
+    cdpPrintf(format, ##__VA_ARGS__);                           \
+  } while (0)
+
+#define loginfo_ln(format, ...)                                 \
+  do {                                                          \
+    cdpPrintf("[I]");                                           \
+    cdpPrintf(format, ##__VA_ARGS__);cdpPrintf("\n");           \
+  } while (0)
+#else
+#define loginfo(format, ...)                                    \
+  {}
+#define loginfo_ln(format, ...)                                 \
+  {}
+#endif // CDP_LOG_INFO
+
+#ifdef CDP_LOG_DEBUG
+#define logdbg(format, ...)                                     \
+  do {                                                          \
+    cdpPrintf("[D]");                                           \
+    cdpPrintf("[** %s : %d] ",__FILENAME__, __LINE__);                            \
+    cdpPrintf(format, ##__VA_ARGS__);                           \
+  } while (0)
+
+#define logdbg_ln(format, ...)                                  \
+  do {                                                          \
+    cdpPrintf("[D]");                                           \
+    cdpPrintf("[** %s : %d] ",__FILENAME__, __LINE__);                            \
+    cdpPrintf(format, ##__VA_ARGS__);cdpPrintf("\n");           \
+  } while (0)
+#else
+#define logdbg(format, ...)                                     \
+  {}
+#define logdbg_ln(format, ...)                                  \
+  {}
+#endif
+#endif

@@ -1,0 +1,11 @@
+# build output
+*.o
+*.a
+*.gch
+*.log
+src/MamaDuck
+src/PapaDuck
+# credentials
+src/include/secrets.h
+*.pem
+*.key
